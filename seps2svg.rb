@@ -127,12 +127,6 @@ def process_eps
     when /\/acc(\[|\s|$)/
       set_encoding(line)
       unrecognized_code.clear
-    # elsif line.strip == ""
-    # Metadata tag of the form %OBJECT:ID=4:START:17. 1.0  19.459    .0  -5.00    .00    .8500
-    when /^\s*%OBJECT:ID=\d*:START:/
-      $svg << %Q{<g>\n}
-    when /^\s*%OBJECT:ID=\d*:END:/
-      $svg << %Q{</g>\n}
     when /^\s*newpath\s*#{$re_number}\s*#{$re_number}\s*#{$re_number}\s*-270\s*90\s*arc\s*$/o
       process_circle(line)
     else
