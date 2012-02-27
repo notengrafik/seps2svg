@@ -3,11 +3,12 @@ filename = ARGV[0]
 $eps = File.new filename,"r"
 $svg = File.new filename.downcase.gsub(".eps",".svg"),"w"
 
-load "fonttable.rb"
-load "standardEncoding.rb"
+$programDirectory = File.dirname($0) + "/"
+load $programDirectory + "fonttable.rb"
+load $programDirectory + "standardEncoding.rb"
 
 $glyphtable = {}
-File.new("glyphlist.txt","r").each_line {|line|
+File.new($programDirectory + "glyphlist.txt","r").each_line {|line|
   line.strip!
   if line[0]!="#" then
     line = line.split ";"
@@ -32,8 +33,7 @@ $re_psname = /(^|(?<=[\s\(\)<>\[\]\{\}\/%]))(?!#{$re_number})[^\s\(\)<>\[\]\{\}\
 # search for BoundingBox
 $eps.each_line { |line|
   if line["%%BoundingBox:"] then
-    name_dummy, $bb_llx,$bb_lly,$bb_urx,$bb_ury = line.split.collect{|coordinate| coordinate.to_i}
-    # (The first element in the split array is "%%BoundingBox:" and gets converted to name_dummy=0)
+    $bb_left, $bb_bottom, $bb_right, $bb_top = line.gsub("%%BoundingBox:","").split.map{|value| value.to_i}
     break
   end
 }
@@ -70,10 +70,11 @@ def root_element
   $svg << %Q{  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n\n}
   $svg << %Q{<svg version="1.1"\n}
   $svg << %Q{     xmlns="http://www.w3.org/2000/svg"\n}
-  $svg << %Q{     xmlns:xlink="http://www.w3.org/1999/xlink"}
-  $svg << %Q{     width="#{$bb_urx - $bb_llx}" height="#{$bb_ury - $bb_lly}">\n}
-  $svg << %Q{<g transform="translate(#{-$bb_llx},#{$bb_ury}) scale(1,-1) scale(#{$size}) translate(#{$lmar},#{$bmar})" }
-  $svg << %Q{stroke-linejoin="round" color="black" stroke="currentColor" fill="none" stroke-width="#{$wdl}"  fill-rule="evenodd">\n}
+  $svg << %Q{     xmlns:xlink="http://www.w3.org/1999/xlink"\n}
+  $svg << %Q{     viewBox="#{$bb_left} 0 #{$bb_right - $bb_left} #{$bb_top - $bb_bottom}"\n}
+  $svg << %Q{     width="#{$bb_right - $bb_left}" height="#{$bb_top - $bb_bottom}">\n}
+  $svg << %Q{<g transform="translate(0,#{$bb_top}) scale(1,-1) scale(#{$size}) translate(#{$lmar},#{$bmar})" }
+  $svg << %Q{stroke-linejoin="round" stroke="black" fill="none" stroke-width="#{$wdl}"  fill-rule="evenodd">\n}
 
   process_eps
 
@@ -121,6 +122,8 @@ def process_eps
     # line of the form "     150  -23832 m save (Contrebasses) show"
     when /^\s*#{$re_number}\s*#{$re_number}\s*m save \(.*\) show\s*$/o
       process_text(line)
+    when /^\s%svg%/
+      $svg << line.partition('%svg%')[2]
     when /\/acc(\[|\s|$)/
       set_encoding(line)
       unrecognized_code.clear
@@ -345,13 +348,16 @@ end
 def process_circle(line)
   # line of the form " newpath   15487.5  -23475.0      50.8 -270   90 arc"
   splitline = line.split
-  $svg << %Q{<circle cx="#{splitline[1]}" cy="#{splitline[2]}" r="#{splitline[3]}" stroke="none" fill="currentColor"/>\n}
+  $svg << %Q{<circle cx="#{splitline[1]}" cy="#{splitline[2]}" r="#{splitline[3]}" }
   # in the next line, a single "e" (eofill) is expected
   line = $eps.readline
-  if line !~ /^\s*e\s*$/ then
-    $warning_counter = $warning_counter+1
-    print "WARNING #{$warning_counter}: Expected line with single 'e', but found:\n"
-    puts line
+  case line.strip
+    when "e" then $svg << %Q{stroke="none" fill="currentColor"/>\n}
+    when "s" then $svg << %Q{/>\n}
+    else
+      $warning_counter = $warning_counter+1
+      print "WARNING #{$warning_counter}: Expected line with single 'e' or 's', but found:\n"
+      puts line
   end
 end
 
