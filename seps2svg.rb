@@ -348,17 +348,18 @@ end
 def process_circle(line)
   # line of the form " newpath   15487.5  -23475.0      50.8 -270   90 arc"
   splitline = line.split
-  $svg << %Q{<circle cx="#{splitline[1]}" cy="#{splitline[2]}" r="#{splitline[3]}" }
+  $svg << %Q{<circle cx="#{splitline[1]}" cy="#{splitline[2]}" r="#{splitline[3]}"}
   # in the next line, a single "e" (eofill) is expected
   line = $eps.readline
   case line.strip
-    when "e" then $svg << %Q{stroke="none" fill="currentColor"/>\n}
-    when "s" then $svg << %Q{/>\n}
+    when "e" then $svg << %Q{ stroke="none" fill="currentColor"}
+    when "s" then ;
     else
       $warning_counter = $warning_counter+1
       print "WARNING #{$warning_counter}: Expected line with single 'e' or 's', but found:\n"
       puts line
   end
+  $svg << %Q{/>\n}
 end
 
 root_element
