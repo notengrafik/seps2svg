@@ -74,7 +74,7 @@ def root_element
   $svg << %Q{     viewBox="#{$bb_left} 0 #{$bb_right - $bb_left} #{$bb_top - $bb_bottom}"\n}
   $svg << %Q{     width="#{$bb_right - $bb_left}" height="#{$bb_top - $bb_bottom}">\n}
   $svg << %Q{<g transform="translate(0,#{$bb_top}) scale(1,-1) scale(#{$size}) translate(#{$lmar},#{$bmar})" }
-  $svg << %Q{stroke-linejoin="round" stroke="black" fill="none" stroke-width="#{$wdl}"  fill-rule="evenodd">\n}
+  $svg << %Q{stroke-linejoin="round" color="black" fill="none" stroke-width="#{$wdl}"  fill-rule="evenodd">\n}
 
   process_eps
 
@@ -123,7 +123,7 @@ def process_eps
     when /^\s*#{$re_number}\s*#{$re_number}\s*m save \(.*\) show\s*$/o
       process_text(line)
     when /^\s%svg%/
-      $svg << line.partition('%svg%')[2]
+      process_direct_svg(line)
     when /\/acc(\[|\s|$)/
       set_encoding(line)
       unrecognized_code.clear
@@ -172,17 +172,23 @@ end
 def process_use(line)
   # line of the form "  55.639 lw   3743 -24000   .480 P04 wdl lw"
   #                        0   1     2      3       4   5   6   7
-  splitline=line.split
-  $svg << %Q{<use stroke-width="#{splitline[0]}" transform="translate(#{splitline[2]},#{splitline[3]}) scale(#{splitline[4]})" }
-  $svg << %Q{xlink:href="\##{splitline[5]}"/>\n}
+  strokeWidth,dummy,x,y,scale,id = line.split
+  write_use(strokeWidth, x, y, scale, id)
 end
 
 def process_small_use(line)
   # line of the form "  11112 -23650  1.000 P00"
   #                        0   1      2      3
-  splitline=line.split
-  $svg << %Q{<use stroke-width="#{$currentlw}" transform="translate(#{splitline[0]},#{splitline[1]}) scale(#{splitline[2]})" }
-  $svg << %Q{xlink:href="\##{splitline[3]}"/>\n}
+  x,y,scale,id = line.split
+  write_use($currentlw, x, y, scale, id)
+end
+
+def write_use(strokeWidth, x, y, scale,id)
+  $svg << %Q{<use stroke-width="#{strokeWidth}" transform="translate(#{x},#{y}) }
+  if scale.to_f != 0 then
+    $svg << %Q{scale(#{scale})" }
+  end
+  $svg << %Q{xlink:href="\##{id}"/>\n}
 end
 
 def process_def(line)
@@ -198,7 +204,7 @@ end
 
 
 def process_path(line, attributes)
-  $svg << %Q{<path #{attributes} d="\n}
+  $svg << %Q{<path #{attributes} stroke="currentColor" d="\n}
   begin
     # write M or L and coordinates
 #    print "before upcase: " + line
@@ -307,7 +313,7 @@ def process_text(line)
   x = line[0]
   y = line[1]
 
-  $svg << %Q{<text transform="translate(#{x},#{y}) scale(#{$current_x_size},#{-$current_y_size})" fill="currentColor" stroke="none" }
+  $svg << %Q{<text transform="translate(#{x},#{y}) scale(#{$current_x_size},#{-$current_y_size})" fill="currentColor"}
   $svg << %Q{ font-size="1" #{$currentfont}>}
 
   # Iterate through the glyphs. The regexp matches all single chars in literal PostScript strings.
@@ -346,7 +352,7 @@ def process_circle(line)
   # in the next line, a single "e" (eofill) is expected
   line = $eps.readline
   case line.strip
-    when "e" then $svg << %Q{ stroke="none" fill="currentColor"}
+    when "e" then $svg << %Q{ fill="currentColor"}
     when "s" then ;
     else
       $warning_counter = $warning_counter+1
@@ -354,6 +360,11 @@ def process_circle(line)
       puts line
   end
   $svg << %Q{/>\n}
+end
+
+def process_direct_svg(line)
+  $svg << line.partition('%svg%')[2].chomp
+  $svg << "\n"
 end
 
 root_element
