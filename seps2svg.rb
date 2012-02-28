@@ -98,7 +98,11 @@ def process_eps
       process_def(line)
     # line of the form "118 -168 m"
     when /^\s*#{$re_number}\s+#{$re_number}\s+m\s*$/o
-      process_path(line,%Q{stroke-width="#{$currentlw}"})
+      if $currentlw == $wdl then
+        process_path(line,"")
+      else
+        process_path(line,%Q{stroke-width="#{$currentlw}"})
+      end
     # line of the form "  55.639 lw   3743 -24000   .480 P04 wdl lw"
     when /^\s*#{$re_number}\s+lw\s+#{$re_number}\s+#{$re_number}\s+#{$re_number}\s+P\d+\s+wdl lw\s*$/o
       process_use(line)
@@ -204,7 +208,7 @@ end
 
 
 def process_path(line, attributes)
-  $svg << %Q{<path #{attributes} stroke="currentColor" d="\n}
+  $svg << %Q{<path #{attributes} d="\n}
   begin
     # write M or L and coordinates
 #    print "before upcase: " + line
@@ -219,7 +223,7 @@ def process_path(line, attributes)
   if line =~ /^\s*g e r s\s*$/ then
     $svg << 'Z" fill="currentColor'
   end
-  $svg << %Q{"/>\n}
+  $svg << %Q{" stroke="currentColor"/>\n}
 end
 
 def set_encoding(line)
