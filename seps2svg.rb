@@ -188,11 +188,14 @@ def process_small_use(line)
 end
 
 def write_use(strokeWidth, x, y, scale,id)
-  $svg << %Q{<use stroke-width="#{strokeWidth}" transform="translate(#{x},#{y}) }
-  if scale.to_f != 0 then
-    $svg << %Q{scale(#{scale})" }
+  $svg << %Q{<use transform="translate(#{x},#{y})}
+  if scale.to_f != 1 then
+    $svg << %Q{ scale(#{scale})}
   end
-  $svg << %Q{xlink:href="\##{id}"/>\n}
+  if strokeWidth != $wdl then
+    $svg << %Q{" stroke-width="#{strokeWidth}}
+  end
+  $svg << %Q{" xlink:href="\##{id}"/>\n}
 end
 
 def process_def(line)
