@@ -326,6 +326,12 @@ def process_text(line)
   $svg << %Q{<text transform="translate(#{x},#{y}) scale(#{$current_x_size},#{-$current_y_size})" fill="currentColor" stroke="none"}
   $svg << %Q{ font-size="1" #{$currentfont}>}
 
+  # if first character is a space, it is implicitly stripped by SVG, unless it's a non breaking space
+  if (string[0]==" ") then
+    $svg << "&#160;"
+    string.slice!(0)
+  end
+
   # Iterate through the glyphs. The regexp matches all single chars in literal PostScript strings.
   # Excption: A continuous whitespace sequence is also matched as it has to be treated specially
   string.scan(/\\n|\\r|\\t|\\b|\\f|\\\\|\\\(|\\\)|\\[0-3][0-7]{2}|\\.|\s+|./) { |c|
