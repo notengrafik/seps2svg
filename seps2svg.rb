@@ -74,7 +74,7 @@ def root_element
   $svg << %Q{     viewBox="#{$bb_left} 0 #{$bb_right - $bb_left} #{$bb_top - $bb_bottom}"\n}
   $svg << %Q{     width="#{$bb_right - $bb_left}" height="#{$bb_top - $bb_bottom}">\n}
   $svg << %Q{<g transform="translate(0,#{$bb_top}) scale(1,-1) scale(#{$size}) translate(#{$lmar},#{$bmar})" }
-  $svg << %Q{stroke-linejoin="round" color="black" fill="none" stroke-width="#{$wdl}"  fill-rule="evenodd">\n}
+  $svg << %Q{stroke-linejoin="round" color="black" stroke="currentColor" fill="none" stroke-width="#{$wdl}"  fill-rule="evenodd">\n}
 
   process_eps
 
@@ -229,7 +229,7 @@ def process_path(line, attributes)
   if line =~ /^\s*g e r s\s*$/ then
     $svg << 'Z" fill="currentColor'
   end
-  $svg << %Q{" stroke="currentColor"/>\n}
+  $svg << %Q{"/>\n}
 end
 
 def set_encoding(line)
@@ -323,7 +323,7 @@ def process_text(line)
   x = line[0]
   y = line[1]
 
-  $svg << %Q{<text transform="translate(#{x},#{y}) scale(#{$current_x_size},#{-$current_y_size})" fill="currentColor"}
+  $svg << %Q{<text transform="translate(#{x},#{y}) scale(#{$current_x_size},#{-$current_y_size})" fill="currentColor" stroke="none"}
   $svg << %Q{ font-size="1" #{$currentfont}>}
 
   # Iterate through the glyphs. The regexp matches all single chars in literal PostScript strings.
@@ -362,7 +362,7 @@ def process_circle(line)
   # in the next line, a single "e" (eofill) or "s" (stroke) is expected
   line = $eps.readline
   case line.strip
-    when "e" then $svg << %Q{ fill="currentColor"}
+    when "e" then $svg << %Q{ fill="currentColor" stroke="none"}
     when "s" then ;
     else
       $warning_counter = $warning_counter+1
