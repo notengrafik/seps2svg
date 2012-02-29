@@ -133,6 +133,9 @@ def process_eps
       unrecognized_code.clear
     when /^\s*newpath\s*#{$re_number}\s*#{$re_number}\s*#{$re_number}\s*-270\s*90\s*arc\s*$/o
       process_circle(line)
+    # line of the form " g 1   2.00000 scale"
+    when /^\s*g\s+1\s+#{$re_number}\s+scale\s*$/o
+      process_ellipse(line)
     else
       recognized = false
       unrecognized_code << line
@@ -356,7 +359,7 @@ def process_circle(line)
   # line of the form " newpath   15487.5  -23475.0      50.8 -270   90 arc"
   splitline = line.split
   $svg << %Q{<circle cx="#{splitline[1]}" cy="#{splitline[2]}" r="#{splitline[3]}"}
-  # in the next line, a single "e" (eofill) is expected
+  # in the next line, a single "e" (eofill) or "s" (stroke) is expected
   line = $eps.readline
   case line.strip
     when "e" then $svg << %Q{ fill="currentColor"}
@@ -366,6 +369,30 @@ def process_circle(line)
       print "WARNING #{$warning_counter}: Expected line with single 'e' or 's', but found:\n"
       puts line
   end
+  $svg << %Q{/>\n}
+end
+
+def process_ellipse(line)
+  #line of the form " g 1   2.00000 scale"
+  yFactor = line.split[2].to_f
+  line = $eps.readline
+  #line of the form " newpath    2475.0  -12000.0     437.5 -270   90 arc"
+  dummy,cx,rawCy,rx = line.split
+  $svg << %Q{<ellipse cx="#{cx}" cy="#{rawCy.to_f * yFactor}" rx="#{rx}" ry="#{rx.to_f * yFactor}"}
+  line = $eps.readline
+  if (not line[/^\s*1\s+#{$re_number}\s+scale\s*$/]) then
+    print %Q{WARNING #{$warning_counter}: Expected line of the form " 1    .50000 scale", but found:\n}
+    puts line
+  end
+  line = $eps.readline
+  case line
+    when /^\s*e\s+r\s*$/ then $svg << %Q{ fill="currentColor"}
+    when /^\s*s\s+r\s*$/ then ;
+    else
+      $warning_counter = $warning_counter+1
+      print "WARNING #{$warning_counter}: Expected line with content 'e r' or 's r', but found:\n"
+      puts line
+    end
   $svg << %Q{/>\n}
 end
 
