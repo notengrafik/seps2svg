@@ -365,12 +365,10 @@ def process_text(line)
   else
     x,y,m,save,cx,cy,char,ax = line.split
     cx = cx.to_f
-    p cx
     ax = ax.to_f
     string.scan(/\s+|[^\s]+/) { |substring|
       $svg << %Q{<tspan }
       if (substring[/^\s+$/]) then
-        p 'here'
         $svg << %Q{letter-spacing="#{ax + cx}">}
       else
         $svg << %Q{letter-spacing="#{ax}">}
