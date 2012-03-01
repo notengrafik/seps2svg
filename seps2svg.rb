@@ -362,7 +362,7 @@ def process_text(line)
   string = line[/(?<=\()(.*)(?=\))/]
   if (string[/show\s*$/]) then
     write_text_content(string)
-  else
+  else # string with awidthshow spacing
     x,y,m,save,cx,cy,char,ax = line.split
     cx = cx.to_f
     ax = ax.to_f
@@ -381,7 +381,7 @@ def process_text(line)
 
   line = $eps.readline
   if (not line[/^\s*restore\s*$/]) then
-    print "WARNING #{$warning_counter}: Unexpected line after Text item:\n"
+    print %Q{WARNING #{$warning_counter}: Expected line with single "restore" after Text item, but found:\n}
     puts line
   end
 end
