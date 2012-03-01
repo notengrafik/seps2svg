@@ -124,7 +124,9 @@ def process_eps
     when /^\s*\/#{$re_psname}\s+f \[\s*#{$re_number}\s+0\s+0\s+#{$re_number}\s+0\s+0\] mkf sf\s*$/o
       set_font(line)
     # line of the form "     150  -23832 m save (Contrebasses) show"
-    when /^\s*#{$re_number}\s*#{$re_number}\s*m save \(.*\) show\s*$/o
+    when /^\s*#{$re_number}\s+#{$re_number}\s+m\s+save\s*\(.*\)\s*show\s*$/o
+      process_text(line)
+    when /^\s*#{$re_number}\s+#{$re_number}\s+m\s+save\s*#{$re_number}\s+#{$re_number}\s+#{$re_number}\s+#{$re_number}\s+#{$re_number}\s*\(.*\)\s*aw\s*$/o
       process_text(line)
     when /^\s%svg%/
       process_direct_svg(line)
@@ -302,61 +304,79 @@ def set_font(line)
 end
 
 def process_text(line)
-  # TODO: Define precise character positions using x-Attribute
+  def write_text_content(string)
+    # TODO: Define precise character positions using x-Attribute
 
-  def write_unicode_glyph(ps_glyph_code)
-    c = $glyphtable[$encoding[ps_glyph_code]]
-    # if c is undefined, write a kind of missing-glyph rectangle
-    if !c
-      $svg << "&#9647;"
-    # check whether c is in the printable ASCII range
-    # (and not "<" which would be interpreted as a tag bracket)
-    elsif (c>31) && (c<127) && (c!="<".ord)
-      $svg << c.chr
-    elsif # write Unicode
-      $svg << "&#" << c << ";"
-    end
-  end
-
-  string = line[/(?<= m save \()(.)*(?=\) show\s*$)/]
-  line = line.split
-  x = line[0]
-  y = line[1]
-
-  $svg << %Q{<text transform="translate(#{x},#{y}) scale(#{$current_x_size},#{-$current_y_size})" fill="currentColor" stroke="none"}
-  $svg << %Q{ font-size="1" #{$currentfont}>}
-
-  # if first character is a space, it is implicitly stripped by SVG, unless it's a non breaking space
-  if (string[0]==" ") then
-    $svg << "&#160;"
-    string.slice!(0)
-  end
-
-  # Iterate through the glyphs. The regexp matches all single chars in literal PostScript strings.
-  # Excption: A continuous whitespace sequence is also matched as it has to be treated specially
-  string.scan(/\\n|\\r|\\t|\\b|\\f|\\\\|\\\(|\\\)|\\[0-3][0-7]{2}|\\.|\s+|./) { |c|
-    if (c[/\s\s+/]) then
-      c.each_char{$svg << "&#160;"}
-    else
-      case c.length
-        when 1 then write_unicode_glyph(c[0].ord)
-        when 2 then case c[1]
-          when "n" then write_unicode_glyph(10)
-          when "r" then write_unicode_glyph(13)
-          when "t" then write_unicode_glyph(9)
-          when "b" then write_unicode_glyph(8)
-          when "f" then write_unicode_glyph(12)
-          when "\\" then write_unicode_glyph(92)
-          when "(" then write_unicode_glyph(40)
-          when ")" then write_unicode_glyph(41)
-          else write_unicode_glyph(c[1].ord)
-        end
-        # octal codes
-        when 4 then write_unicode_glyph(c[1,3].to_i(8))
+    def write_unicode_glyph(ps_glyph_code)
+      c = $glyphtable[$encoding[ps_glyph_code]]
+      # if c is undefined, write a kind of missing-glyph rectangle
+      if !c
+        $svg << "&#9647;"
+      # check whether c is in the printable ASCII range
+      # (and not "<" which would be interpreted as a tag bracket)
+      elsif (c>31) && (c<127) && (c!="<".ord)
+        $svg << c.chr
+      elsif # write Unicode
+        $svg << "&#" << c << ";"
       end
     end
-  }
+    
+    # if first character is a space, it is implicitly stripped by SVG, unless it's a non breaking space
+    if (string[0]==" ") then
+      $svg << "&#160;"
+      string.slice!(0)
+    end
 
+    # Iterate through the glyphs. The regexp matches all single chars in literal PostScript strings.
+    # Excption: A continuous whitespace sequence is also matched as it has to be treated specially
+    string.scan(/\\n|\\r|\\t|\\b|\\f|\\\\|\\\(|\\\)|\\[0-3][0-7]{2}|\\.|\s+|./) { |c|
+      if (c[/\s\s+/]) then
+        c.each_char{$svg << "&#160;"}
+      else
+        case c.length
+          when 1 then write_unicode_glyph(c[0].ord)
+          when 2 then case c[1]
+            when "n" then write_unicode_glyph(10)
+            when "r" then write_unicode_glyph(13)
+            when "t" then write_unicode_glyph(9)
+            when "b" then write_unicode_glyph(8)
+            when "f" then write_unicode_glyph(12)
+            when "\\" then write_unicode_glyph(92)
+            when "(" then write_unicode_glyph(40)
+            when ")" then write_unicode_glyph(41)
+            else write_unicode_glyph(c[1].ord)
+          end
+          # octal codes
+          when 4 then write_unicode_glyph(c[1,3].to_i(8))
+        end
+      end
+    }
+    
+  end
+
+  # line of the form "   7190  -20482 m save      .00 0 32    22.95 0 (cresc.) aw"
+  #               or "     150  -23832 m save (Contrebasses) show"
+  x,y = line.split
+  $svg << %Q{<text transform="translate(#{x},#{y}) scale(1,#{-$current_y_size/$current_x_size})" fill="currentColor" stroke="none"}
+  $svg << %Q{ font-size="#{$current_x_size}" #{$currentfont}>}
+  string = line[/(?<=\()(.*)(?=\))/]
+  if (string[/show\s*$/]) then
+    write_text_content(string)
+  else
+    x,y,m,save,cx,cy,char,ax = line.split
+    cx = cx.to_f
+    ax = ax.to_f
+    string.scan(/\s+|[^\s]+/) { |substring|
+      $svg << %Q{<tspan }
+      if (substring[/^s+$/]) then
+        $svg << %Q{letter-spacing="#{ax + cx}">}
+      else
+        $svg << %Q{letter-spacing="#{ax}">}
+      end
+      write_text_content(substring)
+      $svg << %Q{</tspan>}
+    }
+  end
   $svg << %Q{</text>\n}
 
   line = $eps.readline
