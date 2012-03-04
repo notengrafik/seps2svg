@@ -360,7 +360,7 @@ def process_text(line)
   $svg << %Q{<text transform="translate(#{x},#{y}) scale(1,#{-$current_y_size/$current_x_size})" fill="currentColor" stroke="none"}
   $svg << %Q{ font-size="#{$current_x_size}" #{$currentfont}>}
   string = line[/(?<=\()(.*)(?=\))/]
-  if (string[/show\s*$/]) then
+  if (line[/show\s*$/]) then
     write_text_content(string)
   else # string with awidthshow spacing
     x,y,m,save,cx,cy,char,ax = line.split
