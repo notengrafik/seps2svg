@@ -1,7 +1,7 @@
 filename = ARGV[0]
 
 $eps = File.new filename,"r"
-$svg = File.new filename.downcase.gsub(".eps",".svg"),"w"
+$svg = File.new filename[0..-4] << "svg", "w"
 
 $programDirectory = File.dirname($0) + "/"
 load $programDirectory + "fonttable.rb"
