@@ -1,7 +1,7 @@
 filename = ARGV[0]
 
 $eps = File.new filename,"r"
-$svg = File.new filename[0..-4] << "svg", "w"
+$svg = File.new filename[/.*\./] << "svg", "w"
 
 $programDirectory = File.dirname($0) + "/"
 load $programDirectory + "fonttable.rb"
@@ -128,7 +128,7 @@ def process_eps
       process_text(line)
     when /^\s*#{$re_number}\s+#{$re_number}\s+m\s+save\s*#{$re_number}\s+#{$re_number}\s+#{$re_number}\s+#{$re_number}\s+#{$re_number}\s*\(.*\)\s*aw\s*$/o
       process_text(line)
-    when /^\s%svg%/
+    when /^\s*%svg%/
       process_direct_svg(line)
     when /\/acc(\[|\s|$)/
       set_encoding(line)
