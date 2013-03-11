@@ -76,7 +76,10 @@ def root_element
   $svg << %Q{<g transform="translate(0,#{$bb_top}) scale(1,-1) scale(#{$size}) translate(#{$lmar},#{$bmar})" }
   $svg << %Q{stroke-linejoin="round" color="black" stroke="currentColor" fill="none" stroke-width="#{$wdl}"  fill-rule="evenodd">\n}
 
-  process_eps
+  group_count = process_eps
+  group_count.times do |i|
+    $svg << "</g>\n"
+  end
 
   $svg << "</g>\n"
   $svg << "</svg>\n"
@@ -86,8 +89,8 @@ end
 def process_eps
   # TODO:
   # - Recognize outline fonts
-  # - Process text using "aw"
   unrecognized_code = ""
+  group_counter = 0
 
   $eps.each_line { |line|
     recognized = true
@@ -126,6 +129,7 @@ def process_eps
     # line of the form "     150  -23832 m save (Contrebasses) show"
     when /^\s*#{$re_number}\s+#{$re_number}\s+m\s+save\s*\(.*\)\s*show\s*$/o
       process_text(line)
+    # line of the form "   7190  -20482 m save      .00 0 32    22.95 0 (cresc.) aw"
     when /^\s*#{$re_number}\s+#{$re_number}\s+m\s+save\s*#{$re_number}\s+#{$re_number}\s+#{$re_number}\s+#{$re_number}\s+#{$re_number}\s*\(.*\)\s*aw\s*$/o
       process_text(line)
     when /^\s*%svg%/
@@ -133,11 +137,15 @@ def process_eps
     when /\/acc(\[|\s|$)/
       set_encoding(line)
       unrecognized_code.clear
-    when /^\s*newpath\s*#{$re_number}\s*#{$re_number}\s*#{$re_number}\s*-270\s*90\s*arc\s*$/o
+    when /^\s*newpath\s*#{$re_number}\s+#{$re_number}\s+#{$re_number}\s*-270\s*90\s*arc\s*$/o
       process_circle(line)
     # line of the form " g 1   2.00000 scale"
     when /^\s*g\s+1\s+#{$re_number}\s+scale\s*$/o
       process_ellipse(line)
+    # line of the form " 0  16280 tr"
+    when /^\s*#{$re_number}\s+#{$re_number}\s+tr\s*$/
+      process_translate(line)
+      group_counter += 1
     else
       recognized = false
       unrecognized_code << line
@@ -149,6 +157,7 @@ def process_eps
       unrecognized_code.clear
     end
   }
+  return group_counter
 end
 
 
@@ -430,6 +439,12 @@ end
 def process_direct_svg(line)
   $svg << line.partition('%svg%')[2].chomp
   $svg << "\n"
+end
+
+def process_translate(line)
+  # line of the form " 0  16280 tr"
+  splitline = line.split
+  $svg << %Q{<g transform="translate(#{splitline[0]},#{splitline[1]})">}
 end
 
 root_element
