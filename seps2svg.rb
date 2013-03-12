@@ -321,43 +321,37 @@ def process_text(line)
       # if c is undefined, write a kind of missing-glyph rectangle
       if !c
         $svg << "&#9647;"
+      # As XML "normalizes" spaces (removes leading/trailing, shrinks sequence of 
+      # space characters to one space), we make all spaces non-breaking spaces
+      elsif (c==" ".ord)
+        $svg << "&#160;"
       # check whether c is in the printable ASCII range
       # (and not "<" which would be interpreted as a tag bracket)
-      elsif (c>31) && (c<127) && (c!="<".ord)
+      elsif (c>31) && (c<127) && (c!="<".ord) && (c!="&".ord)
         $svg << c.chr
       elsif # write Unicode
         $svg << "&#" << c << ";"
       end
     end
     
-    # if first character is a space, it is implicitly stripped by SVG, unless it's a non breaking space
-    if (string[0]==" ") then
-      $svg << "&#160;"
-      string.slice!(0)
-    end
-
     # Iterate through the glyphs. The regexp matches all single chars in literal PostScript strings.
     # Excption: A continuous whitespace sequence is also matched as it has to be treated specially
     string.scan(/\\n|\\r|\\t|\\b|\\f|\\\\|\\\(|\\\)|\\[0-3][0-7]{2}|\\.|\s+|./) { |c|
-      if (c[/\s\s+/]) then
-        c.each_char{$svg << "&#160;"}
-      else
-        case c.length
-          when 1 then write_unicode_glyph(c[0].ord)
-          when 2 then case c[1]
-            when "n" then write_unicode_glyph(10)
-            when "r" then write_unicode_glyph(13)
-            when "t" then write_unicode_glyph(9)
-            when "b" then write_unicode_glyph(8)
-            when "f" then write_unicode_glyph(12)
-            when "\\" then write_unicode_glyph(92)
-            when "(" then write_unicode_glyph(40)
-            when ")" then write_unicode_glyph(41)
-            else write_unicode_glyph(c[1].ord)
-          end
-          # octal codes
-          when 4 then write_unicode_glyph(c[1,3].to_i(8))
+      case c.length
+        when 1 then write_unicode_glyph(c[0].ord)
+        when 2 then case c[1]
+          when "n" then write_unicode_glyph(10)
+          when "r" then write_unicode_glyph(13)
+          when "t" then write_unicode_glyph(9)
+          when "b" then write_unicode_glyph(8)
+          when "f" then write_unicode_glyph(12)
+          when "\\" then write_unicode_glyph(92)
+          when "(" then write_unicode_glyph(40)
+          when ")" then write_unicode_glyph(41)
+          else write_unicode_glyph(c[1].ord)
         end
+        # octal codes
+        when 4 then write_unicode_glyph(c[1,3].to_i(8))
       end
     }
     
